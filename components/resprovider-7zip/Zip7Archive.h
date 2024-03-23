@@ -13,6 +13,45 @@
 
 
 #include "SevenZip/FileStream.h"
+#include "SevenZip/FileSys.h"
+
+
+class MemFileStreamMemory : public IStream {
+ public:
+  MemFileStreamMemory(const BlobBuffer& blob);
+  ~MemFileStreamMemory();
+
+  STDMETHOD(QueryInterface)(REFIID iid, void** ppvObject);
+  STDMETHOD_(ULONG, AddRef)();
+  STDMETHOD_(ULONG, Release)();
+
+  // ISequentialStream Interface
+ public:
+  STDMETHOD(Read)(void* pv, ULONG cb, ULONG* pcbRead);
+  STDMETHOD(Write)(void const* pv, ULONG cb, ULONG* pcbWritten);
+
+  // IStream Interface
+ public:
+  STDMETHOD(SetSize)(ULARGE_INTEGER);
+  STDMETHOD(CopyTo)(IStream*, ULARGE_INTEGER, ULARGE_INTEGER*, ULARGE_INTEGER*);
+  STDMETHOD(Commit)(DWORD);
+  STDMETHOD(Revert)(void);
+  STDMETHOD(LockRegion)(ULARGE_INTEGER, ULARGE_INTEGER, DWORD);
+  STDMETHOD(UnlockRegion)(ULARGE_INTEGER, ULARGE_INTEGER, DWORD);
+  STDMETHOD(Clone)(IStream**);
+  STDMETHOD(Seek)
+  (LARGE_INTEGER liDistanceToMove,
+   DWORD dwOrigin,
+   ULARGE_INTEGER* lpNewFilePointer);
+  STDMETHOD(Stat)(STATSTG* pStatstg, DWORD grfStatFlag);
+
+ private:
+  LONG _refcount;
+  BlobBuffer _blob;
+  unsigned long _blob_read_pos;
+};  
+
+
 
 typedef struct ZIP_FIND_DATA
 {

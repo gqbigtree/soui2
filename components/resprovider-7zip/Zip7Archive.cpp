@@ -12,6 +12,131 @@
 #include <tchar.h>
 #include <malloc.h>
 
+
+MemFileStreamMemory::MemFileStreamMemory(const BlobBuffer& blob)
+    : _blob(blob), _blob_read_pos(0), _refcount(1) {}
+
+MemFileStreamMemory::~MemFileStreamMemory() {}
+
+STDMETHODIMP MemFileStreamMemory::QueryInterface(REFIID iid, void** ppvObject) {
+  if (iid == __uuidof(IUnknown) || iid == __uuidof(IStream) ||
+      iid == __uuidof(ISequentialStream)) {
+    *ppvObject = static_cast<IStream*>(this);
+    AddRef();
+    return S_OK;
+  } else
+    return E_NOINTERFACE;
+}
+
+STDMETHODIMP_(ULONG) MemFileStreamMemory::AddRef(void) {
+  return (ULONG)InterlockedIncrement(&_refcount);
+}
+
+STDMETHODIMP_(ULONG) MemFileStreamMemory::Release(void) {
+  ULONG res = (ULONG)InterlockedDecrement(&_refcount);
+  if (res == 0)
+    delete this;
+  return res;
+}
+
+STDMETHODIMP MemFileStreamMemory::Seek(LARGE_INTEGER liDistanceToMove,
+                                       DWORD dwOrigin,
+                                       ULARGE_INTEGER* lpNewFilePointer) {
+  DWORD dwMoveMethod;
+
+  switch (dwOrigin) {
+    case STREAM_SEEK_SET:
+      dwMoveMethod = FILE_BEGIN;
+      _blob_read_pos = liDistanceToMove.QuadPart;
+      break;
+    case STREAM_SEEK_CUR:
+      _blob_read_pos += liDistanceToMove.QuadPart;
+      lpNewFilePointer->QuadPart = _blob_read_pos;
+      dwMoveMethod = FILE_CURRENT;
+      break;
+    case STREAM_SEEK_END:
+      lpNewFilePointer->QuadPart = _blob.GetBlobLength();
+      dwMoveMethod = FILE_END;
+      _blob_read_pos = _blob.GetBlobLength();
+      break;
+    default:
+      return STG_E_INVALIDFUNCTION;
+      break;
+  }
+
+
+
+  return S_OK;
+}
+
+STDMETHODIMP MemFileStreamMemory::Stat(STATSTG* pStatstg, DWORD grfStatFlag) {
+  ULARGE_INTEGER size;
+  size.QuadPart = _blob.GetBlobLength();
+  pStatstg->cbSize = size;
+
+  return S_OK;
+}
+
+STDMETHODIMP MemFileStreamMemory::Read(void* pv, ULONG cb, ULONG* pcbRead) {
+  if (cb + _blob_read_pos >= _blob.GetBlobLength())
+    cb = _blob.GetBlobLength() - _blob_read_pos;
+
+  *pcbRead = cb;
+
+  memcpy((unsigned char*)pv, _blob.GetBlobPtr() + _blob_read_pos, cb);
+
+  _blob_read_pos += cb;
+  return S_OK;
+}
+
+STDMETHODIMP MemFileStreamMemory::Write(void const* pv,
+                                        ULONG cb,
+                                        ULONG* pcbWritten) {
+  _blob.AppendBlobContent((const unsigned char*)pv, cb);
+  *pcbWritten = cb;
+
+  _blob_read_pos += cb;
+  return S_OK;
+}
+
+STDMETHODIMP MemFileStreamMemory::SetSize(ULARGE_INTEGER) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::CopyTo(IStream*,
+                                         ULARGE_INTEGER,
+                                         ULARGE_INTEGER*,
+                                         ULARGE_INTEGER*) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::Commit(DWORD) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::Revert(void) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::LockRegion(ULARGE_INTEGER,
+                                             ULARGE_INTEGER,
+                                             DWORD) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::UnlockRegion(ULARGE_INTEGER,
+                                               ULARGE_INTEGER,
+                                               DWORD) {
+  return E_NOTIMPL;
+}
+
+STDMETHODIMP MemFileStreamMemory::Clone(IStream**) {
+  return E_NOTIMPL;
+}
+
+
+
+
 static std::wstring StdStringtoWideString(const std::string &stdstring)
 {
 	const char* str = stdstring.c_str();
@@ -260,7 +385,13 @@ static std::string WString2String(const std::wstring &wstr)
 		{
 			m_fileRes.Detach();
 		}
-		return bOK;
+
+        std::wstring s_pwd = /*StdStringtoWideString*/(pszPassword);
+        SevenZip::SevenZipPassword pwd(true, s_pwd);
+		CMyComPtr<IStream> fileStream = new MemFileStreamMemory(m_fileRes.getBlob());
+
+		SevenZip::SevenZipExtractorMemory decompress;
+        return S_OK == decompress.ExtractArchive(m_fileStreams, fileStream, NULL, &pwd);
 	}
 
 	void CZipArchive::CloseFile()
