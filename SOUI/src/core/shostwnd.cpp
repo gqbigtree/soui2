@@ -286,7 +286,7 @@ BOOL SHostWnd::_InitFromXml(pugi::xml_node xmlNode,int nWidth,int nHeight)
     if(m_hostAttr.m_bTranslucent)
     {
         SetWindowLongPtr(GWL_EXSTYLE, GetWindowLongPtr(GWL_EXSTYLE) | WS_EX_LAYERED);
-        m_dummyWnd.Create(_T("SOUI_DUMMY_WND"),WS_POPUP,WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,0,0,10,10,NULL,NULL);
+        m_dummyWnd.Create(NULL/*_T("SOUI_DUMMY_WND")*/,WS_POPUP,WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,0,0,10,10,NULL,NULL);
         m_dummyWnd.SetWindowLongPtr(GWL_EXSTYLE,m_dummyWnd.GetWindowLongPtr(GWL_EXSTYLE) | WS_EX_LAYERED);
         ::SetLayeredWindowAttributes(m_dummyWnd.m_hWnd,0,0,LWA_ALPHA);
         m_dummyWnd.ShowWindow(SW_SHOWNOACTIVATE);
@@ -478,8 +478,8 @@ int SHostWnd::OnCreate( LPCREATESTRUCT lpCreateStruct )
 {
     GETRENDERFACTORY->CreateRenderTarget(&m_memRT,0,0);
     GETRENDERFACTORY->CreateRegion(&m_rgnInvalidate);
-    m_pTipCtrl = GETTOOLTIPFACTORY->CreateToolTip(m_hWnd);
-    if(m_pTipCtrl) GetMsgLoop()->AddMessageFilter(m_pTipCtrl);
+    //m_pTipCtrl = GETTOOLTIPFACTORY->CreateToolTip(m_hWnd);
+    //if(m_pTipCtrl) GetMsgLoop()->AddMessageFilter(m_pTipCtrl);
     
     SWindow::SetContainer(this);
 
