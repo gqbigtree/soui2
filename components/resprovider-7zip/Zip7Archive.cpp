@@ -394,6 +394,27 @@ static std::string WString2String(const std::wstring &wstr)
         return S_OK == decompress.ExtractArchive(m_fileStreams, fileStream, NULL, &pwd);
 	}
 
+	BOOL CZipArchive::Open(LPBYTE pszData, DWORD dwDataSize, LPCTSTR pszPassword) {
+        std::wstring s_pwd = /*StdStringtoWideString*/(pszPassword);
+        SevenZip::SevenZipPassword pwd(true, s_pwd);
+
+        Close();
+
+        m_fileRes.Attach(pszData, dwDataSize);
+
+        BOOL bOK = OpenZip();
+        if (!bOK) {
+          m_fileRes.Detach();
+        }
+
+        CMyComPtr<IStream> fileStream =
+            new MemFileStreamMemory(m_fileRes.getBlob());
+
+        SevenZip::SevenZipExtractorMemory decompress;
+        return S_OK ==
+               decompress.ExtractArchive(m_fileStreams, fileStream, NULL, &pwd);
+	}
+
 	void CZipArchive::CloseFile()
 	{ 
 	}
@@ -411,3 +432,56 @@ static std::string WString2String(const std::wstring &wstr)
 		std::string fileName = WString2String(pszFileName);
 		return m_fileStreams.GetFileSize(fileName.c_str());
 	} 
+
+
+
+	/////////////////////////
+
+        CMemZipArchive::CMemZipArchive() : m_pProgressCallback(NULL) {
+          memset(m_szPassword, 0, sizeof(m_szPassword) * sizeof(TCHAR));
+		}
+
+        bool CMemZipArchive::Open(LPBYTE pszData, DWORD dwDataSize) {
+          if (!m_fileRes.Attach(pszData, dwDataSize)) {
+            return false;
+          }
+          /*
+          SevenZip::SevenZipPassword pwd(true, m_szPassword);
+          CMyComPtr<IStream> fileStream =
+              new MemFileStreamMemory(m_fileRes.getBlob());
+
+          SevenZip::SevenZipExtractorMemory decompress;
+          return S_OK == decompress.ExtractArchive(m_fileStreams, fileStream,
+                                                   NULL, &pwd);
+		  */
+          return true;
+        }
+
+        bool CMemZipArchive::ExtractArchive(LPCTSTR path) {
+          SevenZip::SevenZipPassword pwd(true, m_szPassword);
+          CMyComPtr<IStream> fileStream =
+              new MemFileStreamMemory(m_fileRes.getBlob());
+
+          SevenZip::SevenZipExtractor decompress;
+          return S_OK == decompress.ExtractArchive(fileStream, path,
+                                                   m_pProgressCallback, &pwd);
+        }
+
+        BOOL CMemZipArchive::SetPassword(LPCTSTR pstrPassword) {
+          if (!pstrPassword)
+            return FALSE;
+
+          size_t t = sizeof(TCHAR);
+
+          if (::lstrlen(pstrPassword) >= (sizeof(m_szPassword) - 1) * t)
+            return FALSE;
+
+          ::lstrcpy(m_szPassword, pstrPassword);
+          return TRUE;
+        }
+
+        void CMemZipArchive::SetProgressCallback(
+            SevenZip::ProgressCallback* pProgressCallback) {
+          m_pProgressCallback = pProgressCallback;
+        }
+

@@ -18,10 +18,11 @@ namespace SevenZip
 
         void SetOverwriteMode(const OverwriteModeEnum& mode);
         OverwriteModeEnum GetOverwriteMode();
-    private:
-
+    // private:
+    //  ¸Ä³Épublic
 		HRESULT ExtractArchive(const CMyComPtr< IStream >& archiveStream, const TString& directory, ProgressCallback* callback, SevenZipPassword *pSevenZipPassword);
 
+    private:
         OverwriteModeEnum m_overwriteMode;
         TString m_message;
     };

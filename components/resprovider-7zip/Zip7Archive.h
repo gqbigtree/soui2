@@ -14,6 +14,8 @@
 
 #include "SevenZip/FileStream.h"
 #include "SevenZip/FileSys.h"
+#include "SevenZip/ArchiveUpdateCallback.h"
+#include "SevenZip/SevenZipExtractor.h"
 
 
 class MemFileStreamMemory : public IStream {
@@ -103,6 +105,7 @@ public:
 
 	BOOL Open(LPCTSTR pszFileName, LPCSTR pszPassword);
 	BOOL Open(HMODULE hModule, LPCTSTR pszName, LPCTSTR pszPassword, LPCTSTR pszType = _T("ZIP"));
+    BOOL Open(LPBYTE pszData, DWORD dwDataSize, LPCTSTR pszPassword);
 
 	void Close();
 	BOOL IsOpen() const;
@@ -119,6 +122,29 @@ protected:
 	DWORD ReadFile(void* pBuffer, DWORD dwBytes);
 private:
 	CFileStream m_fileStreams;
+};
+
+//  
+class CMemZipArchive {
+ public:
+  CMemZipArchive();
+
+  bool Open(LPBYTE pszData, DWORD dwDataSize);
+
+  bool ExtractArchive(LPCTSTR path);
+
+  BOOL SetPassword(LPCTSTR pstrPassword);
+
+  void SetProgressCallback(SevenZip::ProgressCallback* pProgressCallback);
+
+ protected:
+  TCHAR m_szPassword[64];
+  SevenZip::SevenZipExtractor m_decompress;
+  SevenZip::ProgressCallback* m_pProgressCallback;
+
+ private:
+  CZipFile m_fileRes;
+  CFileStream m_fileStreams;
 };
 
 #endif	//	__ZIP7ARCHIVE_H__
